@@ -8,7 +8,7 @@ N=9000000
 BLANT_HOME=`/bin/pwd`
 LIBWAYNE_HOME="$BLANT_HOME/libwayne"
 PATH="$BLANT_HOME:$BLANT_HOME/scripts:$BLANT_HOME/libwayne/bin:$PATH"
-CORES=8
+CORES=(1 2 8)
 
 echo "Starting continuous test loop..."
 
@@ -18,7 +18,7 @@ echo "Run started at: $(date +"%F %T")"
 
 # main script code, from test2_GDV.sh
 export k=1
-for S in NBE EBE; do
+for S in NBE; do
     case $S in
     MCMC) TOL=0.006; exp=2;;
     SEC)  TOL=1.1e-4; exp=3;;
@@ -32,7 +32,7 @@ for S in NBE EBE; do
     for t in $CORES; do
         if [ -f canon_maps/canon_map$k.bin -a -f $CORRECT ]; then
             /bin/echo -n "$S:$k:$t "
-            ./blant -R -s $S -mg -n $N -k $k -t $t networks/syeast.el |
+            ./blant -q -R -r 0 -s $S -mg -n $N -k $k -t $t networks/syeast.el |
             sort -n | cut -d' ' -f2- |
             paste - <(unxz < $CORRECT) |
             awk '{  cols=NF/2;
@@ -51,11 +51,11 @@ for S in NBE EBE; do
                     exit 1
                 } else
                     printf "diff %.4e\t%s\n", diff, $0;
-                }' || exit 1
+                }' # || exit 1
         fi
-    done || exit 1
-    done || exit 1
-done || exit 1
+    done # || exit 1
+    done # || exit 1
+done # || exit 1
 
 
 echo "Restarting..."

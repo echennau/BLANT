@@ -32,7 +32,7 @@ for S in NBE EBE; do
     for t in $CORES; do
         if [ -f canon_maps/canon_map$k.bin -a -f $CORRECT ]; then
             /bin/echo -n "$S:$k:$t "
-            ./blant -R -s $S -mg -n $N -k $k -t $t networks/syeast.el |
+            /usr/bin/time -v ./blant -R -s $S -mg -n $N -k $k -t $t networks/syeast.el |
             sort -n | cut -d' ' -f2- |
             paste - <(unxz < $CORRECT) |
             awk '{  cols=NF/2;

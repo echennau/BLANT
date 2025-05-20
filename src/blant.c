@@ -513,25 +513,30 @@ void* RunBlantInThread(void* arg) {
     if(_outputMode & outputGDV || (_outputMode & communityDetection && _communityMode=='g')) {
         for(int i=0; i<_numCanon; i++) {
             accums->graphletDegreeVector[i] = Ocalloc(G->n, sizeof(**accums->graphletDegreeVector));
-            for(int j=0; j<G->n; j++) accums->graphletDegreeVector[i][j]=0.0;
+            memset(accums->graphletDegreeVector[i], 0, G->n * sizeof(**accums->graphletDegreeVector));
         }
     }
     // initialize thread local ODV vectors if needed
     if(_outputMode & outputODV || (_outputMode & communityDetection && _communityMode=='o')) {
         for(int i=0; i<_numOrbits; i++) {
             accums->orbitDegreeVector[i] = Ocalloc(G->n, sizeof(**accums->orbitDegreeVector));
-            for(int j=0; j<G->n; j++) accums->orbitDegreeVector[i][j]=0.0;
+            memset(accums->orbitDegreeVector[i], 0, G->n * sizeof(**accums->orbitDegreeVector));
         }
     }
 
-    RandomSeed(seed);
 
 #if PARANOID_ASSERTS
+    bool isFailure = false;
     for (int i = 0; i < _numCanon; i++) {
         // printf("graphletConcentration[%d] = %g\n", i, accums->graphletConcentration[i]);
         assert(accums->graphletConcentration[i] == 0);
+        for(int j=0; j<G->n; j++) {
+            // if (_outputMode & outputGDV) assert(accums->graphletDegreeVector[i][j]==0.0);
+            // if (_outputMode & outputODV) assert(accums->orbitDegreeVector[i][j]==0.0);
+            if (!isFailure && _outputMode & outputGDV && accums->graphletDegreeVector[i][j]!=0.0) { Note("Failed assertion! Got %.6g instead of 0.", accums->graphletDegreeVector[i][j]); isFailure = true; }
+            if (!isFailure && _outputMode & outputODV && accums->orbitDegreeVector[i][j]!=0.0) { Note("Failed assertion check here! Got %.6g instead of 0.", accums->orbitDegreeVector[i][j]); isFailure = true; }
+        }
     }
-
 #endif
 
     SET *V = SetAlloc(G->n);
@@ -628,14 +633,14 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
     if(_outputMode & outputGDV || (_outputMode & communityDetection && _communityMode=='g')) {
         for(i=0;i<_numCanon;i++) {
             _graphletDegreeVector[i] = Ocalloc(G->n, sizeof(**_graphletDegreeVector));
-            for(j=0;j<G->n;j++) _graphletDegreeVector[i][j]=0.0;
+            memset(_graphletDegreeVector[i], 0, G->n * sizeof(**_graphletDegreeVector));
         }
     }
     // initialize ODV vectors if needed
     if(_outputMode & outputODV || (_outputMode & communityDetection && _communityMode=='o')) {
         for(i=0;i<_numOrbits;i++) {
             _orbitDegreeVector[i] = Ocalloc(G->n, sizeof(**_orbitDegreeVector));
-            for(j=0;j<G->n;j++) _orbitDegreeVector[i][j]=0.0;
+            memset(_orbitDegreeVector[i], 0, G->n * sizeof(**_orbitDegreeVector));
         }
     } // note that this double allocation of GDV/ODV vectors may slow things down
 
@@ -812,10 +817,10 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
                 for(i=0; i<_numCanon; i++) {
                 for(j=0; j<G->n; j++) {
                     // if (t == 0) assert(_graphletDegreeVector[i][j] == 0);
-                    // if (t == 0 &&_graphletDegreeVector[i][j] != 0) {
-                    //     Note("BAD VALUE: %f", _graphletDegreeVector[i][j]);
-                    //     assert(false);
-                    // }
+                    if (t == 0 &&_graphletDegreeVector[i][j] != 0) {
+                        Note("BAD VALUE: %f", _graphletDegreeVector[i][j]);
+                        assert(false);
+                    }
                     _graphletDegreeVector[i][j] += _threadAccumulators[t].graphletDegreeVector[i][j];
                 }
                 }

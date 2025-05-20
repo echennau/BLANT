@@ -8,17 +8,16 @@ N=9000000
 BLANT_HOME=`/bin/pwd`
 LIBWAYNE_HOME="$BLANT_HOME/libwayne"
 PATH="$BLANT_HOME:$BLANT_HOME/scripts:$BLANT_HOME/libwayne/bin:$PATH"
-CORES=(1 2 8)
+CORES=16
 
 echo "Starting continuous test loop..."
 
 while true; do
 echo "---------------------------------------------------"
-echo "Run started at: $(date +"%F %T")"
 
 # main script code, from test2_GDV.sh
 export k=1
-for S in NBE; do
+for S in NBE EBE; do
     case $S in
     MCMC) TOL=0.006; exp=2;;
     SEC)  TOL=1.1e-4; exp=3;;
@@ -35,11 +34,19 @@ for S in NBE; do
             ./blant -q -R -r 0 -s $S -mg -n $N -k $k -t $t networks/syeast.el |
             sort -n | cut -d' ' -f2- |
             paste - <(unxz < $CORRECT) |
-            awk '{  cols=NF/2;
-                for(c1=1;c1<=cols;c1++){
-                    c2=cols+c1; if($c1&&$c2) print $c1/$c2
+            tee raw.log |
+            awk '{
+                cols=NF/2;
+                for(c1=1; c1<=cols; c1++){
+                    c2=cols+c1;
+                    if($c1 && $c2) {
+                        ratio = $c1 / $c2;
+                        printf "%.6g ", ratio;  # prints ratio with space, adjust format as needed
+                    }
                 }
-                }' |
+                printf "\n";
+            }' |
+            tee ratios.log |
             $LIBWAYNE_HOME/bin/stats -g | # the -g option means "geometric mean"
             sed -e 's/#/num/' -e 's/[	 ][	 ]*/ /g' |
             $LIBWAYNE_HOME/bin/named-next-col '
@@ -51,11 +58,14 @@ for S in NBE; do
                     exit 1
                 } else
                     printf "diff %.4e\t%s\n", diff, $0;
-                }' # || exit 1
+                }' || exit 1
+
+            # cat raw.log 1>&2
+            # cat ratios.log 1>&2
         fi
-    done # || exit 1
-    done # || exit 1
-done # || exit 1
+    done || exit 1
+    done || exit 1
+done || exit 1
 
 
 echo "Restarting..."

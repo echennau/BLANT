@@ -184,6 +184,7 @@ typedef struct {
     double graphletConcentration[MAX_CANONICALS];
     double *graphletDegreeVector[MAX_CANONICALS];
     double *orbitDegreeVector[MAX_ORBITS];
+    int canonNumStarMotifs[MAX_CANONICALS];
     int numSamples;
 } Accumulators;
 

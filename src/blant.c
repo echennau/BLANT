@@ -468,6 +468,7 @@ double computeAbsoluteMultiplier(unsigned long numSamples)
 	    if(_canonNumStarMotifs[i] != -1) foundStars += _graphletCount[i]*_canonNumStarMotifs[i];
 	if(foundStars) {
 	    assert(_totalStarMotifs);
+        //Note("_totalStarMotifs is %g, foundStars is %Lg", _totalStarMotifs, foundStars);
 	    _absoluteCountMultiplier = _totalStarMotifs / foundStars;
 	    total = _absoluteCountMultiplier * numSamples;
 	    //Note("Absolute Count Multiplier %g; estimated total graphlets is %g", _absoluteCountMultiplier, total);
@@ -523,10 +524,13 @@ void* RunBlantInThread(void* arg) {
             memset(accums->orbitDegreeVector[i], 0, G->n * sizeof(**accums->orbitDegreeVector));
         }
     }
+    // initialize thread local graphlet count vectors, how InitializeStarMotifs states
+    for(int i=0; i<_numCanon; i++) accums->canonNumStarMotifs[i] = -1; // 0 is a valid value so use -1 to mean "not yet initialized"
 
 
 #if PARANOID_ASSERTS
     bool isFailure = false;
+    int numFailures = 0;
     for (int i = 0; i < _numCanon; i++) {
         // printf("graphletConcentration[%d] = %g\n", i, accums->graphletConcentration[i]);
         assert(accums->graphletConcentration[i] == 0);
@@ -536,6 +540,9 @@ void* RunBlantInThread(void* arg) {
             if (!isFailure && _outputMode & outputGDV && accums->graphletDegreeVector[i][j]!=0.0) { Note("Failed assertion! Got %.6g instead of 0.", accums->graphletDegreeVector[i][j]); isFailure = true; }
             if (!isFailure && _outputMode & outputODV && accums->orbitDegreeVector[i][j]!=0.0) { Note("Failed assertion check here! Got %.6g instead of 0.", accums->orbitDegreeVector[i][j]); isFailure = true; }
         }
+    }
+    if (isFailure) {
+        Note("Thread %d: numFailures = %d", threadId, numFailures);
     }
 #endif
 
@@ -594,6 +601,7 @@ void* RunBlantInThread(void* arg) {
             else if (checkDoneSampling()) _doneSampling = true; // stop ALL threads
         }
     }
+
     SetFree(prev_node_set);
     SetFree(intersect_node);
     SetFree(V);
@@ -799,10 +807,17 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
             pthread_join(threads[t], NULL);
         }
 
+
+        int totalSamples = 0;
+        Note("Accumulating results from %d threads", _numThreads);
         for (unsigned t = 0; t < _numThreads; t++) {
+            totalSamples += _threadAccumulators[t].numSamples;
             for (i = 0; i < _numCanon; i++) {
                 _graphletConcentration[i] += _threadAccumulators[t].graphletConcentration[i];
                 _graphletCount[i] += _threadAccumulators[t].graphletCount[i];
+                // only needs to be initialized once
+                if (_canonNumStarMotifs[i] == -1) 
+                    _canonNumStarMotifs[i] = _threadAccumulators[t].canonNumStarMotifs[i]; // get rid of the unitialization value of -1
             }
 
             if (_outputMode & outputODV) {
@@ -826,6 +841,7 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
                 }
             }
         }
+        Note("Total samples taken: %d", totalSamples);
 
         clock_gettime(CLOCK_MONOTONIC, &end);
         double elapsed_time = (end.tv_sec - start.tv_sec) +

@@ -313,11 +313,10 @@ Boolean ProcessGraphlet(GRAPH *G, SET *V, unsigned Varray[], const int k, TINY_G
 #if PARANOID_ASSERTS
     assert(0 <= GintOrdinal && GintOrdinal < _numCanon);
 #endif
-
-    if(_canonNumStarMotifs[GintOrdinal] == -1) { // initialize this graphlet's star motif count
-	int i;
-	_canonNumStarMotifs[GintOrdinal] = 0;
-	for(i=0; i<_k; i++) if(TinyGraphDegree(g,i) == k-1) ++_canonNumStarMotifs[GintOrdinal];
+    if(accums->canonNumStarMotifs[GintOrdinal] == -1) { // initialize this graphlet's star motif count
+    int i;
+	accums->canonNumStarMotifs[GintOrdinal] = 0;
+	for(i=0; i<_k; i++) if(TinyGraphDegree(g,i) == k-1) ++accums->canonNumStarMotifs[GintOrdinal];
     }
     // ALWAYS count the frequencies; we may normalize the counts later using absolute graphlet or motif counts.
     accums->graphletCount[GintOrdinal]+=weight;

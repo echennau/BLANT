@@ -471,7 +471,7 @@ double computeAbsoluteMultiplier(unsigned long numSamples)
         //Note("_totalStarMotifs is %g, foundStars is %Lg", _totalStarMotifs, foundStars);
 	    _absoluteCountMultiplier = _totalStarMotifs / foundStars;
 	    total = _absoluteCountMultiplier * numSamples;
-	    //Note("Absolute Count Multiplier %g; estimated total graphlets is %g", _absoluteCountMultiplier, total);
+	    Note("Absolute Count Multiplier %g; estimated total graphlets is %g", _absoluteCountMultiplier, total);
 	}
 	else
 	    if(_totalStarMotifs && _quiet<3) // only print warning if there WERE stars globally but not locally
@@ -531,18 +531,31 @@ void* RunBlantInThread(void* arg) {
 #if PARANOID_ASSERTS
     bool isFailure = false;
     int numFailures = 0;
+    double failureAmount = 0;
     for (int i = 0; i < _numCanon; i++) {
         // printf("graphletConcentration[%d] = %g\n", i, accums->graphletConcentration[i]);
         assert(accums->graphletConcentration[i] == 0);
         for(int j=0; j<G->n; j++) {
             // if (_outputMode & outputGDV) assert(accums->graphletDegreeVector[i][j]==0.0);
             // if (_outputMode & outputODV) assert(accums->orbitDegreeVector[i][j]==0.0);
-            if (!isFailure && _outputMode & outputGDV && accums->graphletDegreeVector[i][j]!=0.0) { Note("Failed assertion! Got %.6g instead of 0.", accums->graphletDegreeVector[i][j]); isFailure = true; }
-            if (!isFailure && _outputMode & outputODV && accums->orbitDegreeVector[i][j]!=0.0) { Note("Failed assertion check here! Got %.6g instead of 0.", accums->orbitDegreeVector[i][j]); isFailure = true; }
+            if (_outputMode & outputGDV && accums->graphletDegreeVector[i][j]!=0.0) { 
+                // if (!isFailure)
+                //     Note("Failed assertion! Got %.6g instead of 0.", accums->graphletDegreeVector[i][j]); 
+                isFailure = true;
+                numFailures++;
+                failureAmount += accums->graphletDegreeVector[i][j]; 
+            }
+            if (_outputMode & outputODV && accums->orbitDegreeVector[i][j]!=0.0) { 
+                // if (!isFailure)
+                //     Note("Failed assertion check here! Got %.6g instead of 0.", accums->orbitDegreeVector[i][j]); 
+                isFailure = true; 
+                numFailures++;
+                failureAmount += accums->graphletDegreeVector[i][j];
+            }
         }
     }
     if (isFailure) {
-        Note("Thread %d: numFailures = %d", threadId, numFailures);
+        Warning("Thread %d: numFailures = %d, failureAmount = %g", threadId, numFailures, failureAmount);
     }
 #endif
 
@@ -650,7 +663,7 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
             _orbitDegreeVector[i] = Ocalloc(G->n, sizeof(**_orbitDegreeVector));
             memset(_orbitDegreeVector[i], 0, G->n * sizeof(**_orbitDegreeVector));
         }
-    } // note that this double allocation of GDV/ODV vectors may slow things down
+    }
 
 
     // initialize distribution tables if needed
@@ -788,7 +801,7 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
         // seed the threads with a base seed that may or may not be specified
         long base_seed = _seed == -1 ? GetFancySeed(true) : _seed;
 
-        Note("Running BLANT in %d threads", _numThreads);
+        // Note("Running BLANT in %d threads", _numThreads);
 
         for (unsigned t = 0; t < _numThreads; t++)
         {
@@ -800,6 +813,8 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
             threadData[t].threadId = t;
             threadData[t].seed = base_seed + t; // each thread has it's own unique seed
             pthread_create(&threads[t], NULL, RunBlantInThread, &threadData[t]);
+            // run each thread one at a time
+            // pthread_join(threads[t], NULL);
         }
 
         // join threads and then summate the accumulators from each thread
@@ -809,7 +824,7 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
 
 
         int totalSamples = 0;
-        Note("Accumulating results from %d threads", _numThreads);
+        // Note("Accumulating results from %d threads", _numThreads);
         for (unsigned t = 0; t < _numThreads; t++) {
             totalSamples += _threadAccumulators[t].numSamples;
             for (i = 0; i < _numCanon; i++) {
@@ -841,12 +856,11 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
                 }
             }
         }
-        Note("Total samples taken: %d", totalSamples);
 
         clock_gettime(CLOCK_MONOTONIC, &end);
         double elapsed_time = (end.tv_sec - start.tv_sec) +
                             (end.tv_nsec - start.tv_nsec) / 1e9;
-        Note("Took %f seconds to sample %d with %d threads.", elapsed_time, numSamples, _numThreads); 
+        // Note("Took %f seconds to sample %d with %d threads.", elapsed_time, numSamples, _numThreads); 
 
     #if 0
 	int batchSize = G->numEdges*10; // 300000; //1000*sqrt(_numOrbits); //heuristic: batchSizes smaller than this lead to spurious early stops

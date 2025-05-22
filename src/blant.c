@@ -471,7 +471,6 @@ double computeAbsoluteMultiplier(unsigned long numSamples)
         //Note("_totalStarMotifs is %g, foundStars is %Lg", _totalStarMotifs, foundStars);
 	    _absoluteCountMultiplier = _totalStarMotifs / foundStars;
 	    total = _absoluteCountMultiplier * numSamples;
-	    Note("Absolute Count Multiplier %g; estimated total graphlets is %g", _absoluteCountMultiplier, total);
 	}
 	else
 	    if(_totalStarMotifs && _quiet<3) // only print warning if there WERE stars globally but not locally
@@ -507,6 +506,8 @@ void* RunBlantInThread(void* arg) {
     int samplesPerThread = args->samplesPerThread;
     Accumulators *accums = &_threadAccumulators[threadId];
     bool stopThread = false;
+
+    RandomSeed(seed);
 
     // ODV/GDV vector initializations concern: 
     // you'd be allocating memory for these vectors, multiplied by the number of threads. Is that a lot? Probably slows it down

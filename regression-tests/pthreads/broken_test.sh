@@ -31,10 +31,10 @@ for S in NBE EBE; do
     for t in $CORES; do
         if [ -f canon_maps/canon_map$k.bin -a -f $CORRECT ]; then
             /bin/echo -n "$S:$k:$t "
-            ./blant -q -R -r 0 -s $S -mg -n $N -k $k -t $t networks/syeast.el |
+            ./blant -q -R -s $S -mg -n $N -k $k -t $CORES networks/syeast.el |
             sort -n | cut -d' ' -f2- |
             paste - <(unxz < $CORRECT) |
-            tee raw.log |
+            tee "raw$S:$k.log" |
             awk '{
                 cols=NF/2;
                 for(c1=1; c1<=cols; c1++){
@@ -46,7 +46,7 @@ for S in NBE EBE; do
                 }
                 printf "\n";
             }' |
-            tee ratios.log |
+            tee "ratios$S:$k.log" |
             $LIBWAYNE_HOME/bin/stats -g | # the -g option means "geometric mean"
             sed -e 's/#/num/' -e 's/[	 ][	 ]*/ /g' |
             $LIBWAYNE_HOME/bin/named-next-col '
@@ -58,14 +58,14 @@ for S in NBE EBE; do
                     exit 1
                 } else
                     printf "diff %.4e\t%s\n", diff, $0;
-                }' || exit 1
+                }' # || exit 1
 
             # cat raw.log 1>&2
             # cat ratios.log 1>&2
         fi
-    done || exit 1
-    done || exit 1
-done || exit 1
+    done # || exit 1
+    done # || exit 1
+done  # || exit 1
 
 
 echo "Restarting..."

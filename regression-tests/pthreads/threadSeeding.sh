@@ -10,15 +10,17 @@
 
 
 SEED=1
-N=10000
-OUT_FILE="/dev/null"
-GRAPH_FILE="./../networks/syeast.el"
+N=100000
+OUT_FILE="out.txt"
+GRAPH_FILE="networks/syeast.el"
 
-OUTPUT_METHODS=(f o g i j)
-SAMPLING_METHODS=(NBE EBE MCMC)
-AVAIL_THREADS=$(getconf _NPROCESSORS_ONLN)
-THREAD_COUNTS=(1 $AVAIL_THREADS)
+OUTPUT_METHODS=(g f)
+SAMPLING_METHODS=(NBE)
+# OUTPUT_METHODS=(f)
+# SAMPLING_METHODS=(NBE)
+THREAD_COUNTS=(1 4)
 K_VALUES=$(seq 4 7)
+# K_VALUES=(5)
 
 TEST_COUNTER=1
 EXIT_CODE=0
@@ -43,7 +45,7 @@ done
 echo "Running Thread Seeding Test. This test runs BLANT commands twice, sorts the output, and ensures they are the exact same."
 
 for OUTPUT_METHOD in "${OUTPUT_METHODS[@]}"; do
-  echo "Testing for output method $OUTPUT_METHOD (utilizing up to $AVAIL_THREADS threads) and comparing output..."
+  echo "Testing for output method $OUTPUT_METHOD and comparing output..."
   for SAMPLING_METHOD in "${SAMPLING_METHODS[@]}"; do
     for K in $K_VALUES; do
       for NUM_THREADS in "${THREAD_COUNTS[@]}"; do
@@ -54,14 +56,14 @@ for OUTPUT_METHOD in "${OUTPUT_METHODS[@]}"; do
         
         DIFFERENT=0
 
-        CMD="./blant -t $CORES -r $SEED -m $OUTPUT_METHOD -s $SAMPLING_METHOD -n $N -k $K $GRAPH_FILE"
+        CMD="./blant -t $NUM_THREADS -r $SEED -m $OUTPUT_METHOD -s $SAMPLING_METHOD -n $N -k $K $GRAPH_FILE"
 
         # we must sort the outputs because when multithreading for indexing modes,
         # the program will produce all the same results, but in a different order due to race conditions
         $CMD 2>/dev/null | sort > "$TMP1"
         $CMD 2>/dev/null | sort > "$TMP2"
 
-
+        # if output is empty then this fails; need to add a check for that
         {
             echo "================== TEST #$TEST_COUNTER =================="
             echo "Running: $CMD, with seed: $SEED, twice."

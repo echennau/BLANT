@@ -508,15 +508,22 @@ void* RunBlantInThread(void* arg) {
     bool stopThread = false;
 
     RandomSeed(seed);
+    RandomUniform(); // call it once to initialize the random number generator
+    // Note("Thread %d: Random Value 1 = %.6g", threadId, RandomUniform());
+    // Note("Thread %d: Random Value 2 = %.6g", threadId, RandomUniform());
+    // Note("Thread %d: Random Value 3 = %.6g", threadId, RandomUniform());
+    // Note("Thread %d: Random Value 4 = %.6g", threadId, RandomUniform());
+    // pthread_exit(0);
 
     // ODV/GDV vector initializations concern: 
     // you'd be allocating memory for these vectors, multiplied by the number of threads. Is that a lot? Probably slows it down
     // initialize thread local GDV vectors if needed
     if(_outputMode & outputGDV || (_outputMode & communityDetection && _communityMode=='g')) {
-        for(int i=0; i<_numCanon; i++) {
-            accums->graphletDegreeVector[i] = Ocalloc(G->n, sizeof(**accums->graphletDegreeVector));
-            memset(accums->graphletDegreeVector[i], 0, G->n * sizeof(**accums->graphletDegreeVector));
-        }
+        for(int i=0;i<_numCanon;i++) accums->graphletDegreeVector[i] = Ocalloc(G->n, sizeof(**_graphletDegreeVector));
+        // for(int i=0; i<_numCanon; i++) {
+        //     accums->graphletDegreeVector[i] = Ocalloc(G->n, sizeof(**accums->graphletDegreeVector));
+        //     memset(accums->graphletDegreeVector[i], 0, G->n * sizeof(**accums->graphletDegreeVector));
+        // }
     }
     // initialize thread local ODV vectors if needed
     if(_outputMode & outputODV || (_outputMode & communityDetection && _communityMode=='o')) {
@@ -537,7 +544,7 @@ void* RunBlantInThread(void* arg) {
         // printf("graphletConcentration[%d] = %g\n", i, accums->graphletConcentration[i]);
         assert(accums->graphletConcentration[i] == 0);
         for(int j=0; j<G->n; j++) {
-            // if (_outputMode & outputGDV) assert(accums->graphletDegreeVector[i][j]==0.0);
+            if (_outputMode & outputGDV) assert(accums->graphletDegreeVector[i][j]==0.0);
             // if (_outputMode & outputODV) assert(accums->orbitDegreeVector[i][j]==0.0);
             if (_outputMode & outputGDV && accums->graphletDegreeVector[i][j]!=0.0) { 
                 // if (!isFailure)
@@ -582,7 +589,8 @@ void* RunBlantInThread(void* arg) {
 
     // begin sampling
     // printf("Running BLANT in threads to compute %d samples, for k=%d.\n", args->numSamples, k);
-    while (!_doneSampling && !stopThread) {
+    // while (!_doneSampling && !stopThread) {
+    while (samplesCounter < samplesPerThread) {
         if (_window) {
             Fatal("Multithreading not yet implemented for any window related output modes.");
         } 
@@ -653,6 +661,8 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
     // each thread also has it's own copy of accumulators, which are then "summed up" into this global copy we initialize below
     // initialize GDV vectors if needed
     if(_outputMode & outputGDV || (_outputMode & communityDetection && _communityMode=='g')) {
+        // for(i=0;i<_numCanon;i++) _graphletDegreeVector[i] = Ocalloc(G->n, sizeof(**_graphletDegreeVector));
+
         for(i=0;i<_numCanon;i++) {
             _graphletDegreeVector[i] = Ocalloc(G->n, sizeof(**_graphletDegreeVector));
             memset(_graphletDegreeVector[i], 0, G->n * sizeof(**_graphletDegreeVector));
@@ -812,7 +822,7 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
             threadData[t].G = G;
             threadData[t].varraySize = varraySize;
             threadData[t].threadId = t;
-            threadData[t].seed = base_seed + t; // each thread has it's own unique seed
+            threadData[t].seed = base_seed + t * 100; // each thread has it's own unique seed
             pthread_create(&threads[t], NULL, RunBlantInThread, &threadData[t]);
             // run each thread one at a time
             // pthread_join(threads[t], NULL);
@@ -822,7 +832,6 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
         for (unsigned t = 0; t < _numThreads; t++) {
             pthread_join(threads[t], NULL);
         }
-
 
         int totalSamples = 0;
         // Note("Accumulating results from %d threads", _numThreads);
@@ -836,6 +845,21 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
                     _canonNumStarMotifs[i] = _threadAccumulators[t].canonNumStarMotifs[i]; // get rid of the unitialization value of -1
             }
 
+            if(_outputMode & graphletFrequency) {
+                Note("Subdata from thread %d:", t);
+                Note("numSamples = %d", _threadAccumulators[t].numSamples);
+                char buf[BUFSIZ];
+                for(int canon=0; canon<_numCanon; canon++) {
+                    if (SetIn(_connectedCanonicals, canon)) {
+                    if(_freqDisplayMode == freq_display_mode_concentration) 0;
+                        // printf("%lf %s\n", _graphletConcentration[canon], PrintOrdinal(buf, canon));
+                    else
+                        printf("%f %s\n", _threadAccumulators[t].graphletCount[canon],
+                        PrintOrdinal(buf, canon));
+                    }
+                }
+            }
+
             if (_outputMode & outputODV) {
                 for(i=0; i<_numOrbits; i++) {
                 for(j=0; j<G->n; j++) {
@@ -847,7 +871,7 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
             if (_outputMode & outputGDV) {
                 for(i=0; i<_numCanon; i++) {
                 for(j=0; j<G->n; j++) {
-                    // if (t == 0) assert(_graphletDegreeVector[i][j] == 0);
+                    if (t == 0) assert(_graphletDegreeVector[i][j] == 0);
                     if (t == 0 &&_graphletDegreeVector[i][j] != 0) {
                         Note("BAD VALUE: %f", _graphletDegreeVector[i][j]);
                         assert(false);
@@ -857,6 +881,17 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
                 }
             }
         }
+
+            if(_outputMode & graphletFrequency) {
+                Note("Global data");
+                char buf[BUFSIZ];
+                for(int canon=0; canon<_numCanon; canon++) {
+                    if (SetIn(_connectedCanonicals, canon)) {
+                            printf("%llu %s\n", (unsigned long long) llround(_graphletCount[canon]),
+                            PrintOrdinal(buf, canon));
+                    }
+                }
+            }
 
         clock_gettime(CLOCK_MONOTONIC, &end);
         double elapsed_time = (end.tv_sec - start.tv_sec) +

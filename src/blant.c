@@ -419,6 +419,9 @@ double computeAbsoluteMultiplier(unsigned long numSamples)
 
 
 void* RunBlantInThread(void* arg) {
+    struct timespec start_time, end_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
     // variable unpacking
     ThreadData* args = (ThreadData*)arg;
     // honestly some of this data can just be accessed via global variables
@@ -482,6 +485,13 @@ void* RunBlantInThread(void* arg) {
     SetFree(intersect_node);
     SetFree(V);
     TinyGraphFree(empty_g);
+
+    
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    double elapsed_time = (end_time.tv_sec - start_time.tv_sec) +
+                        (end_time.tv_nsec - start_time.tv_nsec) / 1e9;
+    Note("Thread %d took %f seconds to run.", threadId, elapsed_time); 
+
     pthread_exit(0);
 }
 

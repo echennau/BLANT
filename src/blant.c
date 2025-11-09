@@ -557,9 +557,9 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
     }
     
     if (_sampleMethod == SAMPLE_MCMC)
-	_window? initializeMCMC(G, _windowSize, numSamples) : initializeMCMC(G, k, numSamples);
+		_window? initializeMCMC(G, _windowSize, numSamples) : initializeMCMC(G, k, numSamples);
     else if (_sampleMethod == SAMPLE_NODE_EXPANSION || _sampleMethod == SAMPLE_EDGE_EXPANSION)
-	initialize(G, k, numSamples);
+		initialize(G, k, numSamples);
     if (_outputMode & graphletDistribution) {
         // accumulators must be provided but no need for them
         SampleGraphlet(G, V, Varray, k, G->n, &_trashAccumulator);
@@ -673,32 +673,36 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
         clock_gettime(CLOCK_MONOTONIC, &start);
 
         unsigned long samplesCounter = 0;
+        int batchSize = G->numEdges * sqrt(G->n) * sqrt(_numThreads);
+        batchSize = 5000000;
         int batchCounter = 0;
         Boolean confMet = false;
 
         while (!confMet && !_earlyAbort) {
             if (_stopMode == stopOnSamples) {
                 // one and done, distribute the n samples amongst the threads and stop there
-                SampleNGraphletsInThreads(_seed, k, G, varraySize, numSamples, _numThreads);
+                	SampleNGraphletsInThreads(_seed, k, G, varraySize, numSamples, _numThreads);
                 samplesCounter += numSamples;
                 break;
             } else if (_stopMode == stopOnPrecision) {
 		// 300000; //1000*sqrt(_numOrbits); //heuristic: batchSizes smaller than this lead to spurious early stops
-                int batchSize = G->numEdges * sqrt(G->n) * sqrt(_numThreads);
 
                 STAT *sTotal[MAX_CANONICALS];
 		if(_desiredPrec && _quiet<2)
 		    Note("using batchSize %d to estimate counts with relative precision %g (%g digit%s) with %g%% confidence",
 			batchSize, _desiredPrec, _desiredDigits, (fabs(1-_desiredDigits)<1e-6?"":"s"), 100*_confidence);
                 for(i=0; i<_numCanon; i++) if(SetIn(_connectedCanonicals,i)) sTotal[i] = StatAlloc(0,0,0, false, false);
-
-                SampleNGraphletsInThreads(_seed, k, G, varraySize, batchSize, _numThreads);
+				
+					SampleNGraphletsInThreads(_seed, k, G, varraySize, batchSize, _numThreads);
 
                 samplesCounter += batchSize; // Correctly increment samples counter only once.
                 batchCounter++;
 
                 int minNumBatches = 13-k+1/sqrt(1-_confidence)/k; //heuristic
+                minNumBatches = 0;
+                minNumBatches = 10;
                 int maxNumBatches = 1000*minNumBatches; // huge
+                maxNumBatches = 10;
                 double worstInterval=0, intervalSum=0;
                 _worstCanon = -1;
 
@@ -748,9 +752,9 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
                         else strcpy(buf, "(time failed)");
                         // Note: batchCounter is used here instead of the non-effective batchSize increment
                         Note("%s batch %d CPU %gs samples %lu prec mean %.3g worst %.3g (g%d count %.0f)",
-			    buf, batchCounter, GetCPUseconds(), samplesCounter, _meanPrec,
-			    worstInterval, _worstCanon, _graphletCount[_worstCanon]);
-                    }
+                        buf, batchCounter, GetCPUseconds(), samplesCounter, _meanPrec,
+                        worstInterval, _worstCanon, _graphletCount[_worstCanon]);
+                            }
 
                     if(batchCounter >= maxNumBatches || (batchCounter >= minNumBatches && currentBatchPrecision < _desiredPrec))
                         confMet=true; // don't reset the counts if we're done
@@ -773,6 +777,9 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
         if(!_quiet) Note("Took %f seconds to sample %lu with %d threads in %d batches.",
 		elapsed_time, samplesCounter, _numThreads, batchCounter); 
 	numSamples = samplesCounter;
+
+        // TODO: BENCHMARK LOGGING
+        Note("BENCHMARK METADATA=%f|%d|%d|%d|%d\n", elapsed_time, G->n, G->numEdges, batchSize, batchCounter);
     }
 #if 0
     //THIS IS THE OLD PRECISION BASED SAMPLING LOOP, which has been moved into "} else if (_stopMode == stopOnPrecision) {" 

@@ -8,7 +8,7 @@ NUM_BAD=0
 
 export k=1
 echo "Skipping MCMC and SEC sampling since it cannot run in threads"
-for S in EBE NBE
+for S in EBE NBE MCMC
 do
     case $S in
     MCMC) TOL=0.006; exp=2;;

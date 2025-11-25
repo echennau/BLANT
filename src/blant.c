@@ -428,7 +428,7 @@ void* RunBlantInThread(void* arg) {
     int varraySize = args->varraySize;
     long seed = args->seed;
     int threadId = args->threadId;
-    Accumulators *accums = args->accums;
+    Accumulators *accums = InitializeAccumulatorStruct(G);
 
     // initialize the random number generator
     RandomSeed(seed);
@@ -496,6 +496,9 @@ void* RunBlantInThread(void* arg) {
     SetFree(intersect_node);
     SetFree(V);
     TinyGraphFree(empty_g);
+
+    args->accums = accums;
+
     pthread_exit(0);
 }
 

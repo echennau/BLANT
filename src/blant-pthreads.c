@@ -88,7 +88,8 @@ void SampleNGraphletsInThreads(int seed, int k, GRAPH *G, int varraySize, int nu
         threadData[t].varraySize = varraySize;
         threadData[t].threadId = t;
         threadData[t].seed = base_seed + t;
-        threadData[t].accums = InitializeAccumulatorStruct(G);
+        // threadData[t].accums = InitializeAccumulatorStruct(G);
+        threadData[t].accums = NULL; // to be initialized in thread
 
         // batching params consumed by RunBlantInThread
         threadData[t].batchSize    = batchSize;

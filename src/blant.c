@@ -497,9 +497,7 @@ void* RunBlantInThread(void* arg) {
     SetFree(V);
     TinyGraphFree(empty_g);
 
-    args->accums = accums;
-
-    pthread_exit(0);
+    pthread_exit((void*)accums);
 }
 
 

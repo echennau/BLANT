@@ -104,7 +104,7 @@ void SampleNGraphletsInThreads(int seed, int k, GRAPH *G, int varraySize, int nu
 
     // wait for each thread to finish execution, then accumulate data from the thread into the passed accumulator
     for (unsigned t = 0; t < numThreads; t++) {
-        pthread_join(threads[t], NULL);
+        pthread_join(threads[t], &threadData[t].accums);
         for (int i = 0; i < _numCanon; i++) {
             _graphletConcentration[i] += threadData[t].accums->graphletConcentration[i];
             _graphletCount[i] += threadData[t].accums->graphletCount[i];

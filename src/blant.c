@@ -708,7 +708,8 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
                 break;
             } else if (_stopMode == stopOnPrecision) {
 		// 300000; //1000*sqrt(_numOrbits); //heuristic: batchSizes smaller than this lead to spurious early stops
-                int batchSize = G->numEdges * sqrt(G->n) * sqrt(_numThreads);
+                // int batchSize = G->numEdges * sqrt(G->n) * sqrt(_numThreads);
+                int batchSize = G->numEdges * sqrt(G->n);
 
                 STAT *sTotal[MAX_CANONICALS];
 		if(_desiredPrec && _quiet<2)
@@ -795,7 +796,8 @@ static int RunBlantFromGraph(int k, unsigned long numSamples, GRAPH *G) {
         double elapsed_time = (end.tv_sec - start.tv_sec) +
                             (end.tv_nsec - start.tv_nsec) / 1e9;
         if(!_quiet) Note("Took %f seconds to sample %lu with %d threads in %d batches.",
-		elapsed_time, samplesCounter, _numThreads, batchCounter); 
+		elapsed_time, samplesCounter, _numThreads, batchCounter);
+	fprintf(stderr, "BLANT_TOTAL_SAMPLES=%lu\n", samplesCounter);
 	numSamples = samplesCounter;
     }
 #if 0
